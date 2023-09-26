@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="//d3js.org/d3.v5.min.js"></script>
+    <script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+    <script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <title>B+ Tree</title>
+    <style>
+        * {
+            font-family: Microsoft JhengHei;
+        }
+
+        .dashboard {
+            display: flex;
+            gap: 10px
+        }
+
+        .block {
+            position: relative;
+            display: inline-block;
+            box-shadow: 2px 2px 5px 1px var(--color);
+            padding: 10px;
+            padding-bottom: 45px;
+            border-radius: 0 0 20px 0;
+        }
+
+        .node {
+            font: 12px sans-serif;
+        }
+
+        .link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 1.5px;
+        }
+
+        #graph {
+            margin: 10px;
+            width: 100%;
+            height: 600px;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        .input {
+            font-size: 14px;
+            border-radius: 100px;
+            box-shadow: 0 0 4px 0 gray;
+            padding: 5px 0;
+            padding: 5px 10px 5px 0;
+            margin-bottom: 5px;
+        }
+
+        .input>span {
+            font-size: 14px;
+            border-radius: 100px 0 0 100px;
+            padding: 5px 10px;
+            color: white;
+            background-color: var(--color);
+        }
+
+        .input>input {
+            font-size: 14px;
+            outline: none;
+            border: none;
+        }
+
+        textarea {
+            width: 160px;
+        }
+
+        .action>span {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 26px;
+            color: var(--color);
+            transition: 0.3s;
+            border-radius: 100px;
+            padding: 2px;
+        }
+
+        .action>span:hover {
+            background: var(--color);
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>B+ Tree 圖形介面
+
+    </h1>
+    <div class="dashboard">
+        <div class="block" style="--color:#DFB34B">
+            <h2>Init</h2>
+            <div class="input">
+                <span>Order</span>
+                <input type="text" style="width:80px" id="init-order" value="2">
+            </div>
+            <div class="action">
+                <span class="material-icons" onclick="init()">
+                    refresh
+                </span>
+            </div>
+        </div>
+        <div class="block" style="--color:#4255FF">
+            <h2>Insert</h2>
+            <div class="input">
+                <span>Key</span>
+                <input type="text" style="width:80px" id="insert-key" value="1">
+            </div>
+            <div class="input">
+                <span>Value</span>
+                <input type="text" style="width:80px" id="insert-value" value="value1">
+            </div>
+            <div class="action">
+                <span class="material-icons" onclick="insert()">
+                    add
+                </span>
+            </div>
+        </div>
+        <div class="block" style="--color:#FA6652">
+            <h2>Delete</h2>
+            <div class="input">
+                <span>Key</span>
+                <input type="text" style="width:80px" id="delete-key">
+            </div>
+            <div class="action">
+                <span class="material-icons" onclick="_delete()">
+                    remove
+                </span>
+            </div>
+        </div>
+        <div class="block" style="--color:orange">
+            <h2>Bulk Action</h2>
+            <textarea id="bulk-actions" rows="5"></textarea>
+            <div class="action">
+                <span class="material-icons" onclick="bulk()">
+                    play_arrow
+                </span>
+            </div>
+        </div>
+        <div class="block" style="--color:#557755">
+            <h2>Query</h2>
+            <div class="input">
+                <span>Key</span>
+                <input type="text" style="width:80px" id="query-key">
+            </div>
+            <div class="action">
+                <span class="material-icons" onclick="query()">
+                    search
+                </span>
+            </div>
+        </div>
+        <div class="block" style="--color:#777777">
+            <h2>Option</h2>
+            <label for="option-link" style="width: 120px;">
+                <input type="checkbox" id="option-link">
+                顯示資料節點的Link
+            </label>
+            <br>
+            <label for="option-data" style="width: 120px;">
+                <input type="checkbox" id="option-data">
+                顯示資料值
+            </label>
+        </div>
+        <div class="block" style="--color:black">
+            <h2>Quit</h2>
+            <div class="action">
+                <span class="material-icons" onclick="stop()">
+                    power_settings_new
+                </span>
+            </div>
+        </div>
+    </div>
+    <div id="graph"></div>
+</body>
+<script>
+
+    function insert() {
+        let key = document.getElementById("insert-key").value;
+        let value = document.getElementById("insert-value").value;
+        let link = document.querySelector('#option-link:checked');
+        let data = document.querySelector('#option-data:checked');
+
+        if (key.indexOf(',') !== -1) {
+            value = key.split(',')[1].trim();
+            key = key.split(',')[0];
+        }
+
+        if (isNaN(key) || key === "") {
+            alert("資料鍵必須為整數!")
+            return;
+        }
+
+        fetch(`/insert?key=${key}&value=${value}&link=${link ? "true" : "false"}&data=${data ? "true" : "false"}`)
+            .then((response) => {
+                return response.text()
+            }).then((text) => {
+                d3.select("#graph").graphviz()
+                    .renderDot(text).width("100%").height("100%")
+            })
+    }
+
+    function _delete() {
+        let key = document.getElementById("delete-key").value;
+        let link = document.querySelector('#option-link:checked');
+        let data = document.querySelector('#option-data:checked');
+
+        if (isNaN(key) || key === "") {
+            alert("資料鍵必須為整數!")
+            return;
+        }
+
+        fetch(`/delete?key=${key}&link=${link ? "true" : "false"}&data=${data ? "true" : "false"}`)
+            .then((response) => {
+                return response.text()
+            }).then((text) => {
+                d3.select("#graph").graphviz()
+                    .renderDot(text).width("100%").height("100%")
+            })
+    }
+
+    function query() {
+        let key = document.getElementById("query-key").value;
+
+        if (isNaN(key) || key === "") {
+            alert("資料鍵必須為整數!")
+            return;
+        }
+
+        fetch(`/query?key=${key}`)
+            .then((response) => {
+                return response.json()
+            }).then((json) => {
+                console.log(json);
+                if (json.found) {
+                    alert(`鍵值為${key}的資料為： ${json.values}`)
+                } else {
+                    alert(`未找到鍵值為${key}的資料`)
+                }
+            })
+    }
+
+    function bulk() {
+        let link = document.querySelector('#option-link:checked');
+        let data = document.querySelector('#option-data:checked');
+        let actions = document.getElementById("bulk-actions").value;
+
+        fetch(`/bulk?link=${link ? "true" : "false"}&data=${data ? "true" : "false"}`, {
+            method: 'POST',
+            body: actions
+        })
+            .then((response) => {
+                return response.text()
+            }).then((text) => {
+                d3.select("#graph").graphviz()
+                    .renderDot(text).width("100%").height("100%")
+            })
+    }
+
+
+    function requestGraph() {
+        let link = document.querySelector('#option-link:checked');
+        let data = document.querySelector('#option-data:checked');
+        fetch(`/graph?link=${link ? "true" : "false"}&data=${data ? "true" : "false"}`)
+            .then((response) => {
+                return response.text()
+            }).then((text) => {
+                d3.select("#graph").graphviz()
+                    .renderDot(text).width("100%").height("100%")
+            })
+    }
+
+    function init() {
+        let order = document.getElementById("init-order").value;
+        let link = document.querySelector('#option-link:checked');
+        let data = document.querySelector('#option-data:checked');
+
+        if (isNaN(order) || order === "") {
+            alert("Order必須為整數!")
+            return;
+        }
+
+        fetch(`/init?order=${order}&link=${link ? "true" : "false"}&data=${data ? "true" : "false"}`)
+            .then((response) => {
+                return response.text()
+            }).then((text) => {
+                d3.select("#graph").graphviz()
+                    .renderDot(text).width("100%").height("100%")
+            })
+    }
+
+    function stop() {
+        fetch(`/stop`);
+    }
+
+    requestGraph();
+
+    document.querySelector('#option-link').addEventListener("change", () => {
+        requestGraph();
+    })
+
+    document.querySelector('#option-data').addEventListener("change", () => {
+        requestGraph();
+    })
+
+</script>
+
+</html>
