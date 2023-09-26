@@ -132,27 +132,33 @@ void bulk(const Request& req, Response& res) {
 }
 
 int main(void) {
-  int order;
-  cin >> order;
+  int order = 2;
+  // cin >> order;
   tree = new BPTree(order);
-
-  string symbol;
-  string data;
-  while (cin >> symbol) {
-    if (symbol == "+") {
-      cin >> data;
-      stringstream ss(data);
-      string key, value;
-      getline(ss, key, ',');
-      getline(ss, value, ',');
-      tree->insert(stoi(key), value);
-    } else if (symbol == "-") {
-      cin >> data;
-      tree->_delete(stoi(data));
-    } else {
-      break;
-    }
-  }
+  tree->insert(11, "VB");
+  tree->insert(12, "JavaScript");
+  tree->insert(22, "C#");
+  tree->insert(32, "Golang");
+  tree->insert(51, "C++");
+  tree->insert(45, "Kotlin");
+  tree->insert(60, "C");
+  // string symbol;
+  // string data;
+  // while (cin >> symbol) {
+  //   if (symbol == "+") {
+  //     cin >> data;
+  //     stringstream ss(data);
+  //     string key, value;
+  //     getline(ss, key, ',');
+  //     getline(ss, value, ',');
+  //     tree->insert(stoi(key), value);
+  //   } else if (symbol == "-") {
+  //     cin >> data;
+  //     tree->_delete(stoi(data));
+  //   } else {
+  //     break;
+  //   }
+  // }
 
   ifstream fin("index.html");
 
